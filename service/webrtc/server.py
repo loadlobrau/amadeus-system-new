@@ -17,7 +17,7 @@ from dotenv import load_dotenv  # 用于加载环境变量
 import aiohttp  # 用于异步HTTP请求
 import json  # 用于JSON处理
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Dict, Optional, Any, List
 from openai import OpenAI
 # 导入自定义的工具函数
 from utils import run_async, generate_sys_prompt, process_llm_stream, generate_unique_user_id
@@ -170,15 +170,50 @@ def get_user_mem0_config(webrtc_id: str):
     }
 
 logging.basicConfig(level=logging.INFO)
-rtc_configuration = {
-    "iceServers": [
-        {
-            "urls": "turn:43.160.205.75:80",
-            "username": "okabe",
-            "credential": "elpsycongroo"
-        },
-    ]
-}
+
+
+def _parse_ice_urls(raw_urls: Optional[str]) -> List[str]:
+    if not raw_urls:
+        return []
+    return [url.strip() for url in raw_urls.split(",") if url.strip()]
+
+
+def build_rtc_configuration() -> Dict[str, List[Dict[str, Any]]]:
+    """
+    从环境变量构建RTC配置：
+    - STUN_URLS: 逗号分隔的 STUN URLs
+    - TURN_URLS: 逗号分隔的 TURN URLs
+    - TURN_USERNAME: TURN 用户名
+    - TURN_CREDENTIAL: TURN 密码
+
+    安全回退策略：
+    - 未配置TURN时，仅返回STUN（如果有）
+    - STUN/TURN都未配置时，返回空iceServers列表
+    """
+    stun_urls = _parse_ice_urls(os.getenv("STUN_URLS"))
+    turn_urls = _parse_ice_urls(os.getenv("TURN_URLS"))
+    turn_username = os.getenv("TURN_USERNAME")
+    turn_credential = os.getenv("TURN_CREDENTIAL")
+
+    ice_servers: List[Dict[str, Any]] = []
+    if stun_urls:
+        ice_servers.append({"urls": stun_urls})
+
+    if turn_urls and turn_username and turn_credential:
+        ice_servers.append(
+            {
+                "urls": turn_urls,
+                "username": turn_username,
+                "credential": turn_credential,
+            }
+        )
+    elif turn_urls:
+        logging.warning("检测到 TURN_URLS，但 TURN_USERNAME/TURN_CREDENTIAL 未完整配置，已忽略 TURN 配置。")
+
+    return {"iceServers": ice_servers}
+
+
+rtc_configuration = build_rtc_configuration()
 
 def start_up(webrtc_id):
     logging.info(f"用户 {webrtc_id} 开始函数已执行")
