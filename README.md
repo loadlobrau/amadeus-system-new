@@ -45,7 +45,7 @@
 
 2. **安装依赖**
    ```bash
-   npm install
+   pnpm install
    ```
 
 3. **配置环境变量**
@@ -57,7 +57,7 @@
 
 4. **启动开发服务器**
    ```bash
-   npm run dev
+   pnpm dev
    ```
    
    应用将在 `http://localhost:1002` 启动
@@ -124,7 +124,7 @@
 1. **同时启动所有服务**
    ```bash
    # 终端1: 启动前端
-   npm run dev
+   pnpm dev
    
    # 终端2: 启动Node.js服务
    cd service && pnpm dev
@@ -136,7 +136,7 @@
 2. **代码检查**
    ```bash
    # 前端代码检查
-   npm run lint
+   pnpm lint
    
    # 后端服务代码检查
    cd service && pnpm lint
@@ -145,13 +145,13 @@
 3. **构建测试**
    ```bash
    # 构建前端
-   npm run build
+   pnpm build
    
    # 构建后端服务
    cd service && pnpm build
    
    # 构建Electron应用
-   npm run build:electron
+   pnpm build:electron
    ```
 
 ### 开发环境要求
