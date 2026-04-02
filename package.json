@@ -8,11 +8,16 @@
     "dev": "vite",
     "build": "vite build",
     "build:api": "cd ./service && pnpm build",
+    "build:api:electron": "cd ./service && pnpm build:electron",
     "start:api": "cd ./service && pnpm prod",
     "lint": "eslint .",
     "preview": "vite preview",
     "build:frontend": "vite build",
+
     "build:node": "cd service && pnpm install && pnpm build",
+=======
+
+
     "build:electron": "pnpm build && pnpm build:api:electron && electron-builder",
     "start:electron": "pnpm build && pnpm build:api && electron electron/main.mjs"
   },

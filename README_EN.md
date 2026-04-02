@@ -271,6 +271,10 @@ docker run -d --name amadeus-webrtc \
   -e WHISPER_MODEL=YourWhisper_Model_Version \
   -e AI_MODEL=YourLLM_Model_Version \
   -e MEM0_API_KEY=YourMEM0_Memory_Service_API_Key \
+  -e STUN_URLS=stun:stun1.example.com:3478,stun:stun2.example.com:3478 \
+  -e TURN_URLS=turn:your-turn.example.com:3478 \
+  -e TURN_USERNAME=YourTURNUsername \
+  -e TURN_CREDENTIAL=YourTURNCredential \
   -e TIME_LIMIT=YourWebRTC_Stream_Max_Time_Limit_Seconds \
   -e CONCURRENCY_LIMIT=YourMax_Concurrent_Connections \
   amadeus-webrtc-service
@@ -293,6 +297,10 @@ The following are the environment variables for the built-in AI services of the 
 | `WHISPER_MODEL` | Whisper model version to use | None |
 | `AI_MODEL` | Large language model version to use | None |
 | `MEM0_API_KEY` | MEM0 memory service API key | None |
+| `STUN_URLS` | STUN server URLs, supports multiple values separated by commas | Empty (not configured) |
+| `TURN_URLS` | TURN server URLs, supports multiple values separated by commas | Empty (not configured) |
+| `TURN_USERNAME` | TURN server username | Empty (not configured) |
+| `TURN_CREDENTIAL` | TURN server credential/password | Empty (not configured) |
 | `TIME_LIMIT` | Maximum time limit for WebRTC stream (seconds) | 600 |
 | `CONCURRENCY_LIMIT` | Maximum concurrent connections | 10 |
 
@@ -328,19 +336,14 @@ FastRTC provides an automation script that can deploy TURN servers on AWS:
 
 For detailed steps, please refer to FastRTC's self-hosted deployment guide.
 
-After deployment is complete, you can fill in the TURN server information in the WebRTC service code:
+After deployment, configure TURN/STUN via environment variables (no code change required):
 
-```json
-{
-  "iceServers": [
-    {
-      "urls": "turn:YourTURNServerIP:3478",
-      "username": "YourSetUsername",
-      "credential": "YourSetPassword"
-    }
-  ]
-}
-```
+- `STUN_URLS=stun:YourSTUNServerIP:3478` (optional)
+- `TURN_URLS=turn:YourTURNServerIP:3478`
+- `TURN_USERNAME=YourSetUsername`
+- `TURN_CREDENTIAL=YourSetPassword`
+
+If TURN is not configured, the service safely falls back to **STUN-only** (when `STUN_URLS` is set) or an empty ICE server list (when `STUN_URLS` is not set).
 
 > **Tip**
 > 

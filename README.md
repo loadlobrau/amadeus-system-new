@@ -275,6 +275,10 @@ docker run -d --name amadeus-webrtc \
   -e WHISPER_MODEL=你的Whisper模型版本 \
   -e AI_MODEL=大语言模型型号 \
   -e MEM0_API_KEY=你的MEM0记忆服务API密钥 \
+  -e STUN_URLS=stun:stun1.example.com:3478,stun:stun2.example.com:3478 \
+  -e TURN_URLS=turn:your-turn.example.com:3478 \
+  -e TURN_USERNAME=你的TURN用户名 \
+  -e TURN_CREDENTIAL=你的TURN密码 \
   -e TIME_LIMIT=你的WebRTC流的最大时间限制(秒) \
   -e CONCURRENCY_LIMIT=你的最大并发连接数 \
   amadeus-webrtc-service
@@ -297,6 +301,10 @@ docker run -d --name amadeus-webrtc \
 | `WHISPER_MODEL` | 使用的Whisper模型版本 | 无 |
 | `AI_MODEL` | 使用的大语言模型型号 | 无 |
 | `MEM0_API_KEY` | MEM0记忆服务的API密钥 | 无 |
+| `STUN_URLS` | STUN服务器地址，支持逗号分隔多个URL | 空（未配置） |
+| `TURN_URLS` | TURN服务器地址，支持逗号分隔多个URL | 空（未配置） |
+| `TURN_USERNAME` | TURN服务器用户名 | 空（未配置） |
+| `TURN_CREDENTIAL` | TURN服务器密码 | 空（未配置） |
 | `TIME_LIMIT` | WebRTC流的最大时间限制(秒) | 600 |
 | `CONCURRENCY_LIMIT` | 最大并发连接数 | 10 |
 
@@ -332,19 +340,14 @@ FastRTC提供了一个自动化脚本，可在AWS上部署TURN服务器：
 
 详细步骤请参考FastRTC的自托管部署指南。
 
-部署完成后，可在WebRTC服务的代码中填入TURN服务器信息：
+部署完成后，请通过环境变量配置TURN/STUN信息（无需再修改代码）：
 
-```json
-{
-  "iceServers": [
-    {
-      "urls": "turn:你的TURN服务器IP:3478",
-      "username": "你设置的用户名",
-      "credential": "你设置的密码"
-    }
-  ]
-}
-```
+- `STUN_URLS=stun:你的STUN服务器IP:3478`（可选）
+- `TURN_URLS=turn:你的TURN服务器IP:3478`
+- `TURN_USERNAME=你设置的用户名`
+- `TURN_CREDENTIAL=你设置的密码`
+
+如果未配置 TURN，服务会自动降级为 **仅STUN**（当配置了 `STUN_URLS` 时）或返回空的 ICE 列表（未配置 `STUN_URLS` 时）。
 
 > **提示**
 > 
