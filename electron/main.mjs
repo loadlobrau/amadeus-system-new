@@ -174,6 +174,99 @@ function getMimeType(filePath) {
   return mimeTypes[ext] || 'application/octet-stream';
 }
 
+function streamFile(res, filePath, contentType) {
+  if (contentType) {
+    res.setHeader('Content-Type', contentType);
+  }
+
+  const fileStream = createReadStream(filePath);
+  fileStream.pipe(res);
+
+  fileStream.on('error', (error) => {
+    log.error(`文件读取错误: ${error}`);
+    if (!res.headersSent) {
+      res.writeHead(500);
+    }
+    res.end('Internal server error');
+  });
+}
+
+function resolveStaticRequestPath(req, resolvedDistPath) {
+  let pathname;
+  try {
+    pathname = new URL(req.url || '/', 'http://127.0.0.1').pathname;
+  } catch (error) {
+    log.warn(`无法解析请求 URL: ${req.url}`, error);
+    return { errorStatus: 404 };
+  }
+
+  let decodedPath;
+  try {
+    decodedPath = decodeURIComponent(pathname);
+  } catch (error) {
+    log.warn(`请求路径解码失败: ${pathname}`, error);
+    return { errorStatus: 404 };
+  }
+
+  const normalizedPath = path.posix.normalize(decodedPath);
+  const safeRelativePath = normalizedPath === '/' || normalizedPath === ''
+    ? 'index.html'
+    : normalizedPath.replace(/^\/+/, '');
+
+  if (safeRelativePath.split('/').includes('..')) {
+    return { errorStatus: 403 };
+  }
+
+  const candidatePath = path.resolve(resolvedDistPath, safeRelativePath);
+  if (candidatePath !== resolvedDistPath && !candidatePath.startsWith(`${resolvedDistPath}${path.sep}`)) {
+    return { errorStatus: 403 };
+  }
+
+  return { candidatePath };
+}
+
+function serveStaticRequest(req, res, resolvedDistPath, indexPath) {
+  const { candidatePath, errorStatus } = resolveStaticRequestPath(req, resolvedDistPath);
+  if (errorStatus) {
+    res.writeHead(errorStatus);
+    res.end(errorStatus === 403 ? 'Forbidden' : 'Not found');
+    return;
+  }
+
+  fs.access(candidatePath, fs.constants.R_OK, (err) => {
+    if (err) {
+      if (err.code === 'ENOENT') {
+        fs.access(indexPath, fs.constants.R_OK, (indexErr) => {
+          if (indexErr) {
+            res.writeHead(404);
+            res.end('Not found');
+            return;
+          }
+
+          streamFile(res, indexPath, 'text/html');
+        });
+        return;
+      }
+
+      res.writeHead(500);
+      res.end('Internal server error');
+      return;
+    }
+
+    const contentType = getMimeType(candidatePath);
+    streamFile(res, candidatePath, contentType);
+  });
+}
+
+function createStaticServer(distPath) {
+  const resolvedDistPath = path.resolve(distPath);
+  const indexPath = path.resolve(resolvedDistPath, 'index.html');
+
+  return http.createServer((req, res) => {
+    serveStaticRequest(req, res, resolvedDistPath, indexPath);
+  });
+}
+
 // 启动静态文件服务器
 function startStaticServer() {
   return new Promise((resolve, reject) => {
@@ -188,70 +281,7 @@ function startStaticServer() {
     const PORT = 4173;
     
     // 创建HTTP服务器
-    staticServer = http.createServer((req, res) => {
-      // 解析请求URL路径
-      let urlPath = req.url;
-      
-      // 如果URL是根路径或者不存在，默认提供index.html
-      if (urlPath === '/' || urlPath === '') {
-        urlPath = '/index.html';
-      }
-      
-      // 构建文件的完整路径
-      const filePath = path.join(distPath, urlPath);
-      
-      // 检查文件是否存在
-      fs.access(filePath, fs.constants.R_OK, (err) => {
-        if (err) {
-          // 如果文件不存在，提供index.html（支持单页应用的路由）
-          if (err.code === 'ENOENT') {
-            const indexPath = path.join(distPath, 'index.html');
-            
-            // 再次检查index.html是否存在
-            fs.access(indexPath, fs.constants.R_OK, (err) => {
-              if (err) {
-                res.writeHead(404);
-                res.end('Not found');
-                return;
-              }
-              
-              // 设置内容类型
-              res.setHeader('Content-Type', 'text/html');
-              
-              // 流式传输文件内容
-              const fileStream = createReadStream(indexPath);
-              fileStream.pipe(res);
-              
-              fileStream.on('error', (error) => {
-                log.error(`文件读取错误: ${error}`);
-                res.writeHead(500);
-                res.end('Internal server error');
-              });
-            });
-            return;
-          }
-          
-          // 其他错误
-          res.writeHead(500);
-          res.end('Internal server error');
-          return;
-        }
-        
-        // 确定文件的MIME类型
-        const contentType = getMimeType(filePath);
-        res.setHeader('Content-Type', contentType);
-        
-        // 流式传输文件内容
-        const fileStream = createReadStream(filePath);
-        fileStream.pipe(res);
-        
-        fileStream.on('error', (error) => {
-          log.error(`文件读取错误: ${error}`);
-          res.writeHead(500);
-          res.end('Internal server error');
-        });
-      });
-    });
+    staticServer = createStaticServer(distPath);
     
     // 监听错误
     staticServer.on('error', (err) => {
@@ -290,70 +320,7 @@ function tryAlternativePorts(ports, index, distPath, resolve, reject) {
   }
   
   // 创建新的服务器实例
-  staticServer = http.createServer((req, res) => {
-    // 解析请求URL路径
-    let urlPath = req.url;
-    
-    // 如果URL是根路径或者不存在，默认提供index.html
-    if (urlPath === '/' || urlPath === '') {
-      urlPath = '/index.html';
-    }
-    
-    // 构建文件的完整路径
-    const filePath = path.join(distPath, urlPath);
-    
-    // 检查文件是否存在
-    fs.access(filePath, fs.constants.R_OK, (err) => {
-      if (err) {
-        // 如果文件不存在，提供index.html（支持单页应用的路由）
-        if (err.code === 'ENOENT') {
-          const indexPath = path.join(distPath, 'index.html');
-          
-          // 再次检查index.html是否存在
-          fs.access(indexPath, fs.constants.R_OK, (err) => {
-            if (err) {
-              res.writeHead(404);
-              res.end('Not found');
-              return;
-            }
-            
-            // 设置内容类型
-            res.setHeader('Content-Type', 'text/html');
-            
-            // 流式传输文件内容
-            const fileStream = createReadStream(indexPath);
-            fileStream.pipe(res);
-            
-            fileStream.on('error', (error) => {
-              log.error(`文件读取错误: ${error}`);
-              res.writeHead(500);
-              res.end('Internal server error');
-            });
-          });
-          return;
-        }
-        
-        // 其他错误
-        res.writeHead(500);
-        res.end('Internal server error');
-        return;
-      }
-      
-      // 确定文件的MIME类型
-      const contentType = getMimeType(filePath);
-      res.setHeader('Content-Type', contentType);
-      
-      // 流式传输文件内容
-      const fileStream = createReadStream(filePath);
-      fileStream.pipe(res);
-      
-      fileStream.on('error', (error) => {
-        log.error(`文件读取错误: ${error}`);
-        res.writeHead(500);
-        res.end('Internal server error');
-      });
-    });
-  });
+  staticServer = createStaticServer(distPath);
   
   staticServer.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
