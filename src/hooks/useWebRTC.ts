@@ -322,7 +322,6 @@ class WebRTCClient {
         sum += frequencyData[i];
       }
       const audioLevel = sum / frequencyData.length / 255;
-      this.lastAudioLevel = audioLevel;
       
       const currentTime = Date.now();
       
