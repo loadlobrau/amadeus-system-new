@@ -41,7 +41,7 @@ For detailed documentation, please visit: [Amadeus System Documentation Center](
 
 2. **Install dependencies**
    ```bash
-   npm install
+   pnpm install
    ```
 
 3. **Configure environment variables**
@@ -53,7 +53,7 @@ For detailed documentation, please visit: [Amadeus System Documentation Center](
 
 4. **Start development server**
    ```bash
-   npm run dev
+   pnpm dev
    ```
    
    The application will start at `http://localhost:1002`
@@ -120,7 +120,7 @@ For detailed documentation, please visit: [Amadeus System Documentation Center](
 1. **Start all services simultaneously**
    ```bash
    # Terminal 1: Start frontend
-   npm run dev
+   pnpm dev
    
    # Terminal 2: Start Node.js service
    cd service && pnpm dev
@@ -132,7 +132,7 @@ For detailed documentation, please visit: [Amadeus System Documentation Center](
 2. **Code linting**
    ```bash
    # Frontend code linting
-   npm run lint
+   pnpm lint
    
    # Backend service code linting
    cd service && pnpm lint
@@ -141,13 +141,13 @@ For detailed documentation, please visit: [Amadeus System Documentation Center](
 3. **Build testing**
    ```bash
    # Build frontend
-   npm run build
+   pnpm build
    
    # Build backend service
    cd service && pnpm build
    
    # Build Electron application
-   npm run build:electron
+   pnpm build:electron
    ```
 
 ### Development Environment Requirements
