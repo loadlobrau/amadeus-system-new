@@ -291,7 +291,13 @@ const VoiceAssistant = observer(() => {
       const history: ChatMessage[] = JSON.parse(savedHistory);
       setChatHistory(history);
       // 查找最近一条AI消息并设置为当前显示内容
-      const latestAi = history.reverse().find(msg => msg.role === 'assistant');
+      let latestAi: ChatMessage | undefined;
+      for (let i = history.length - 1; i >= 0; i -= 1) {
+        if (history[i].role === 'assistant') {
+          latestAi = history[i];
+          break;
+        }
+      }
       if (latestAi) {
         setLatestAiMessage(latestAi.content);
       }
